@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏢 Immobilien-Tycoon v7.1.1</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        body.dark {
+            background-color: #111827;
+            color: #f9fafb;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        body.dark ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Lucide Icons als SVG Components (vereinfacht)
+        const Building2 = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+                <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+                <path d="M10 6h4"/>
+                <path d="M10 10h4"/>
+                <path d="M10 14h4"/>
+                <path d="M10 18h4"/>
+            </svg>
+        );
+
+        const Sun = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+        );
+
+        const Moon = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+        );
+
+        const Menu = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" x2="20" y1="12" y2="12"/>
+                <line x1="4" x2="20" y1="6" y2="6"/>
+                <line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+        );
+
+        const X = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        );
+
+        const Save = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+        );
+
+        const ChevronDown = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m6 9 6 6 6-6"/>
+            </svg>
+        );
+
+        const ChevronUp = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m18 15-6-6-6 6"/>
+            </svg>
+        );
+
+        const Trash2 = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+        );
+
+        const Filter = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+        );
+
+        const GAME_VERSION = "7.1.1 (Standalone)";
+
+        function RealEstateSimulation() {
+            const [gameState, setGameState] = useState({
+                month: 1,
+                cash: 500000,
+                monthlyIncome: 0,
+                reputation: 50,
+                totalProfit: 0,
+                loan: 0,
+                loanInterestRate: 0.04,
+                difficulty: 'normal',
+                gameMode: 'classic',
+                gameStarted: false,
+                businessType: 'private',
+                playerName: '',
+                companyName: ''
+            });
+
+            const [properties, setProperties] = useState([]);
+            const [availableProperties, setAvailableProperties] = useState([]);
+            const [employees, setEmployees] = useState([]);
+            const [specialists, setSpecialists] = useState([]);
+            const [message, setMessage] = useState('Willkommen bei Immobilien-Tycoon!');
+            
+            const [showMenu, setShowMenu] = useState(false);
+            const [showIncomeDetails, setShowIncomeDetails] = useState(false);
+            const [expandedProperty, setExpandedProperty] = useState(null);
+            const [activeTab, setActiveTab] = useState('properties');
+            const [showGameModeSelection, setShowGameModeSelection] = useState(true);
+            const [darkMode, setDarkMode] = useState(false);
+            const [buyerOffers, setBuyerOffers] = useState(null);
+            const [tenantOffers, setTenantOffers] = useState(null);
+            const [selectionStep, setSelectionStep] = useState(0);
+            const [selectedMode, setSelectedMode] = useState(null);
+            const [selectedDifficulty, setSelectedDifficulty] = useState(null);
+            const [selectedBusinessType, setSelectedBusinessType] = useState(null);
+            const [tempPlayerName, setTempPlayerName] = useState('');
+            const [tempCompanyName, setTempCompanyName] = useState('');
+
+            const [playerLevel, setPlayerLevel] = useState(1);
+            const [playerXP, setPlayerXP] = useState(0);
+            const [skillPoints, setSkillPoints] = useState(0);
+            const [skills, setSkills] = useState({
+                buyDiscount: 0,
+                sellBonus: 0,
+                rentBonus: 0,
+                renovationDiscount: 0,
+                valueGrowth: 0,
+                taxOptimization: 0
+            });
+
+            const [headquarters, setHeadquarters] = useState('home');
+            const [unlockedAchievements, setUnlockedAchievements] = useState([]);
+            const [achievementRewards, setAchievementRewards] = useState({});
+
+            const [gameStats, setGameStats] = useState({
+                propertiesBought: 0,
+                propertiesSold: 0,
+                totalRenovations: 0,
+                highestProfit: 0,
+                taxes: 0,
+                taxFreeCount: 0
+            });
+
+            const [economicCycle] = useState({
+                phase: 'normal',
+                priceMultiplier: 1.0,
+                description: 'Stabiler Markt',
+                interestRate: 0.04
+            });
+
+            const [incomeBreakdown, setIncomeBreakdown] = useState({
+                rentalIncome: 0,
+                maintenanceCost: 0,
+                loanInterest: 0,
+                employeeCost: 0,
+                netIncome: 0
+            });
+
+            const [saveSlots, setSaveSlots] = useState([]);
+            const [showSaveMenu, setShowSaveMenu] = useState(false);
+            const [showLoadMenu, setShowLoadMenu] = useState(false);
+            const [currentSaveSlot, setCurrentSaveSlot] = useState(null);
+
+            const regions = {
+                north: { name: 'Norddeutschland', cities: ['Hamburg', 'Bremen', 'Kiel'], priceLevel: 1.0, demand: 1.0 },
+                east: { name: 'Ostdeutschland', cities: ['Berlin', 'Leipzig', 'Dresden'], priceLevel: 0.8, demand: 1.2 },
+                west: { name: 'Westdeutschland', cities: ['Köln', 'Düsseldorf', 'Dortmund'], priceLevel: 1.1, demand: 1.1 },
+                south: { name: 'Süddeutschland', cities: ['München', 'Stuttgart', 'Nürnberg'], priceLevel: 1.4, demand: 1.3 }
+            };
+
+            const propertyTypes = [
+                { type: 'Grundstück', basePrice: 50000, appreciationRate: 0.02, maintenanceCost: 200, canBuild: true },
+                { type: 'Einfamilienhaus', basePrice: 250000, appreciationRate: 0.015, maintenanceCost: 800, rental: 1200 },
+                { type: 'Mehrfamilienhaus', basePrice: 450000, appreciationRate: 0.018, maintenanceCost: 1500, rental: 3500 },
+                { type: 'Hotel', basePrice: 2000000, appreciationRate: 0.035, maintenanceCost: 5000, rental: 15000 },
+                { type: 'Ferienhaus', basePrice: 350000, appreciationRate: 0.022, maintenanceCost: 1200, rental: 2500 },
+                { type: 'Bürokomplex', basePrice: 1800000, appreciationRate: 0.028, maintenanceCost: 4000, rental: 12000 }
+            ];
+
+            const employeeTypes = [
+                { type: 'Hausmeister', cost: 2500, description: 'Reduziert Instandhaltung -20%' },
+                { type: 'Makler', cost: 4000, description: 'Erhöht Verkaufspreise +10%' },
+                { type: 'Verwalter', cost: 3500, description: 'Erhöht Mieten +15%' },
+                { type: 'Steuerberater', cost: 5000, description: 'Reduziert Steuern -15%' }
+            ];
+
+            const gameModes = {
+                classic: { name: 'Klassisch', description: 'Erreiche 5 Mio €', goal: 5000000 },
+                sandbox: { name: 'Sandbox', description: 'Unbegrenztes Geld', unlimited: true }
+            };
+
+            const difficulties = {
+                easy: { name: 'Anfänger', startCash: 1000000, interestBase: 0.03 },
+                normal: { name: 'Normal', startCash: 500000, interestBase: 0.04 },
+                hard: { name: 'Schwer', startCash: 200000, interestBase: 0.05 }
+            };
+
+            const levelThresholds = [0, 1000, 2500, 5000, 8000, 12000, 17000, 23000, 30000, 40000];
+
+            const achievementDefinitions = [
+                { id: 'first_property', name: '🌟 First Blood', desc: 'Erste Immobilie gekauft', reward: { type: 'rent', value: 0.01 }, rewardText: '+1% Mieten' },
+                { id: 'millionaire', name: '💰 Millionär', desc: '1M € Eigenkapital', reward: { type: 'fees', value: 0.05 }, rewardText: '-5% Nebenkosten' },
+                { id: 'collector', name: '🏠 Sammler', desc: '10 Immobilien', reward: { type: 'value', value: 0.1 }, rewardText: '+10% Wert' }
+            ];
+
+            const calculateTotalEquity = () => {
+                const totalPropertyValue = properties.reduce((sum, p) => sum + p.currentValue, 0);
+                return gameState.cash + totalPropertyValue - (gameState.loan || 0);
+            };
+
+            const totalPropertyValue = useMemo(
+                () => properties.reduce((sum, p) => sum + p.currentValue, 0),
+                [properties]
+            );
+
+            const totalEquity = useMemo(
+                () => gameState.cash + totalPropertyValue - (gameState.loan || 0),
+                [gameState.cash, totalPropertyValue, gameState.loan]
+            );
+
+            useEffect(() => {
+                document.body.className = darkMode ? 'dark' : '';
+            }, [darkMode]);
+
+            useEffect(() => {
+                const saved = localStorage.getItem('immoTycoonSaves');
+                if (saved) setSaveSlots(JSON.parse(saved));
+            }, []);
+
+            // Achievement Check
+            useEffect(() => {
+                if (!gameState.gameStarted) return;
+
+                achievementDefinitions.forEach(ach => {
+                    if (!unlockedAchievements.includes(ach.id)) {
+                        let shouldUnlock = false;
+
+                        if (ach.id === 'first_property') shouldUnlock = gameStats.propertiesBought >= 1;
+                        if (ach.id === 'millionaire') shouldUnlock = calculateTotalEquity() >= 1000000;
+                        if (ach.id === 'collector') shouldUnlock = properties.length >= 10;
+
+                        if (shouldUnlock) {
+                            setUnlockedAchievements(prev => [...prev, ach.id]);
+                            
+                            if (ach.reward.type === 'rent') {
+                                setAchievementRewards(prev => ({ ...prev, rentBonus: (prev.rentBonus || 0) + ach.reward.value }));
+                            } else if (ach.reward.type === 'fees') {
+                                setAchievementRewards(prev => ({ ...prev, feesDiscount: (prev.feesDiscount || 0) + ach.reward.value }));
+                            } else if (ach.reward.type === 'value') {
+                                setAchievementRewards(prev => ({ ...prev, valueBonus: (prev.valueBonus || 0) + ach.reward.value }));
+                            }
+
+                            setMessage(`🏆 ${ach.name}! ${ach.rewardText}`);
+                        }
+                    }
+                });
+            }, [properties, gameState, gameStats]);
+
+            const generateRandomName = () => {
+                const names = ['Max Müller', 'Anna Schmidt', 'Leon Weber', 'Sophie Fischer', 'Felix Koch'];
+                setTempPlayerName(names[Math.floor(Math.random() * names.length)]);
+            };
+
+            const generateRandomCompanyName = () => {
+                const companies = ['Premium Immobilien GmbH', 'Elite Properties AG', 'Top Invest KG'];
+                setTempCompanyName(companies[Math.floor(Math.random() * companies.length)]);
+            };
+
+            const startGame = (mode, difficulty, businessType) => {
+                const diff = difficulties[difficulty];
+                const gm = gameModes[mode];
+
+                setGameState({
+                    month: 1,
+                    cash: gm.unlimited ? 999999999 : diff.startCash,
+                    monthlyIncome: 0,
+                    reputation: 50,
+                    totalProfit: 0,
+                    loan: 0,
+                    loanInterestRate: diff.interestBase,
+                    difficulty,
+                    gameMode: mode,
+                    gameStarted: true,
+                    goalAmount: gm.goal || 5000000,
+                    businessType,
+                    playerName: tempPlayerName || 'Spieler',
+                    companyName: businessType === 'commercial' ? (tempCompanyName || 'Firma') : ''
+                });
+
+                setShowGameModeSelection(false);
+                generateNewProperties();
+                setMessage(`🎮 Willkommen ${tempPlayerName || 'Spieler'}!`);
+            };
+
+            const generateNewProperties = () => {
+                const newProps = [];
+                for (let i = 0; i < 6; i++) {
+                    const propType = propertyTypes[Math.floor(Math.random() * propertyTypes.length)];
+                    const regionKey = Object.keys(regions)[Math.floor(Math.random() * 4)];
+                    const region = regions[regionKey];
+                    const city = region.cities[Math.floor(Math.random() * region.cities.length)];
+                    
+                    const condition = Math.floor(Math.random() * 40) + 60;
+                    const basePrice = propType.basePrice * region.priceLevel * (0.8 + Math.random() * 0.4);
+                    const price = Math.floor(basePrice * (condition / 100));
+                    
+                    const totalCost = Math.floor(price * 1.07);
+                    
+                    newProps.push({
+                        id: Date.now() + i + Math.random(),
+                        ...propType,
+                        city,
+                        region: regionKey,
+                        regionName: region.name,
+                        locationMultiplier: region.demand,
+                        condition,
+                        purchasePrice: price,
+                        totalCost,
+                        currentValue: price,
+                        isRented: false,
+                        renovationLevel: 0
+                    });
+                }
+                setAvailableProperties(prev => [...prev, ...newProps]);
+            };
+
+            const buyProperty = (property) => {
+                const discount = 1 - (skills.buyDiscount * 0.05) - (achievementRewards.feesDiscount || 0);
+                const finalPrice = Math.floor(property.totalCost * discount);
+
+                if (gameState.cash < finalPrice) {
+                    setMessage('❌ Zu wenig Geld!');
+                    return;
+                }
+
+                setGameState(prev => ({ ...prev, cash: prev.cash - finalPrice }));
+                
+                const enhancedProp = {
+                    ...property,
+                    purchaseMonth: gameState.month,
+                    appreciationRate: property.appreciationRate + (skills.valueGrowth * 0.005) + (achievementRewards.valueBonus || 0)
+                };
+
+                setProperties(prev => [...prev, enhancedProp]);
+                setAvailableProperties(prev => prev.filter(p => p.id !== property.id));
+                setGameStats(prev => ({ ...prev, propertiesBought: prev.propertiesBought + 1 }));
+                setMessage(`✅ ${property.type} gekauft!`);
+            };
+
+            const sellProperty = (property) => {
+                const baseValue = property.currentValue;
+                const maklerBonus = employees.some(e => e.type === 'Makler') ? 1.1 : 1.0;
+                const skillBonus = 1 + (skills.sellBonus * 0.05);
+
+                const offers = [
+                    { name: 'Schnell', price: Math.floor(baseValue * 0.92 * maklerBonus * skillBonus), icon: '⚡', brokerFee: 0.03 },
+                    { name: 'Normal', price: Math.floor(baseValue * 0.97 * maklerBonus * skillBonus), icon: '💼', brokerFee: 0.05 },
+                    { name: 'Premium', price: Math.floor(baseValue * 1.04 * maklerBonus * skillBonus), icon: '⭐', brokerFee: 0.07 }
+                ];
+
+                setBuyerOffers({ property, offers });
+            };
+
+            const confirmSale = (property, offer) => {
+                const netPrice = offer.price - Math.floor(offer.price * offer.brokerFee);
+                const profit = netPrice - property.purchasePrice;
+                
+                const holdingPeriod = gameState.month - (property.purchaseMonth || 0);
+                const taxFree = holdingPeriod >= (gameState.businessType === 'private' ? 120 : 60);
+                
+                let tax = 0;
+                if (!taxFree && profit > 0) {
+                    const taxRate = gameState.businessType === 'private' ? 0.25 : 0.15;
+                    const reduction = (employees.some(e => e.type === 'Steuerberater') ? 0.15 : 0) + (skills.taxOptimization * 0.05);
+                    tax = Math.floor(profit * taxRate * (1 - reduction));
+                }
+
+                const finalAmount = property.purchasePrice + profit - tax;
+
+                setGameState(prev => ({
+                    ...prev,
+                    cash: prev.cash + finalAmount,
+                    totalProfit: prev.totalProfit + (profit - tax)
+                }));
+
+                setProperties(prev => prev.filter(p => p.id !== property.id));
+                setBuyerOffers(null);
+                setGameStats(prev => ({
+                    ...prev,
+                    propertiesSold: prev.propertiesSold + 1,
+                    taxFreeCount: taxFree ? (prev.taxFreeCount || 0) + 1 : prev.taxFreeCount
+                }));
+
+                setMessage(`💰 Verkauft! +${finalAmount.toLocaleString('de-DE')} € ${taxFree ? '🆓' : ''}`);
+            };
+
+            const renovateProperty = (property) => {
+                const baseCost = Math.floor(property.purchasePrice * 0.15);
+                const discount = (skills.renovationDiscount * 0.1) + (achievementRewards.renovationDiscount || 0);
+                const cost = Math.floor(baseCost * (1 - Math.min(0.7, discount)));
+
+                if (gameState.cash >= cost && property.condition < 100) {
+                    setGameState(prev => ({ ...prev, cash: prev.cash - cost }));
+                    setProperties(prev => prev.map(p =>
+                        p.id === property.id
+                            ? { ...p, renovationLevel: p.renovationLevel + 1, condition: Math.min(100, p.condition + 20), currentValue: Math.floor(p.currentValue * 1.1) }
+                            : p
+                    ));
+                    setGameStats(prev => ({ ...prev, totalRenovations: prev.totalRenovations + 1 }));
+                    setMessage('🔨 Renoviert!');
+                }
+            };
+
+            const toggleRental = (property) => {
+                if (property.type === 'Grundstück') {
+                    if (property.isLeased) {
+                        setProperties(prev => prev.map(p =>
+                            p.id === property.id ? { ...p, isLeased: false, leaseIncome: 0 } : p
+                        ));
+                        setMessage('📋 Pacht beendet');
+                    } else {
+                        const monthlyIncome = Math.floor(property.currentValue * 0.03 / 12);
+                        const offers = [
+                            { type: 'Kurzpacht', monthlyIncome: Math.floor(monthlyIncome * 1.2), duration: 36, isLease: true },
+                            { type: 'Standard', monthlyIncome, duration: 60, isLease: true },
+                            { type: 'Langzeit', monthlyIncome: Math.floor(monthlyIncome * 0.85), duration: 120, isLease: true }
+                        ];
+                        setTenantOffers({ property, offers });
+                    }
+                    return;
+                }
+
+                if (!property.rental) {
+                    setMessage('⚠️ Nicht vermietbar!');
+                    return;
+                }
+
+                if (property.isRented) {
+                    setProperties(prev => prev.map(p =>
+                        p.id === property.id ? { ...p, isRented: false } : p
+                    ));
+                    setMessage('🏠 Gekündigt');
+                } else {
+                    const baseRent = Math.floor(property.rental * property.locationMultiplier);
+                    const verwalterBonus = employees.some(e => e.type === 'Verwalter') ? 1.15 : 1.0;
+                    const skillBonus = 1 + (skills.rentBonus * 0.1) + (achievementRewards.rentBonus || 0);
+                    const totalMultiplier = verwalterBonus * skillBonus;
+
+                    const offers = [
+                        { type: 'Kurz', rent: Math.floor(baseRent * 1.2 * totalMultiplier), duration: 6 },
+                        { type: 'Standard', rent: Math.floor(baseRent * totalMultiplier), duration: 24 },
+                        { type: 'Lang', rent: Math.floor(baseRent * 0.85 * totalMultiplier), duration: 60 }
+                    ];
+                    setTenantOffers({ property, offers });
+                }
+            };
+
+            const confirmTenant = (property, offer) => {
+                if (offer.isLease) {
+                    setProperties(prev => prev.map(p =>
+                        p.id === property.id ? { ...p, isLeased: true, leaseIncome: offer.monthlyIncome, leaseMonthsLeft: offer.duration } : p
+                    ));
+                } else {
+                    setProperties(prev => prev.map(p =>
+                        p.id === property.id ? { ...p, isRented: true, customRent: offer.rent, remainingMonths: offer.duration } : p
+                    ));
+                }
+                setTenantOffers(null);
+                setMessage(`✅ ${offer.type}!`);
+            };
+
+            const hireEmployee = (type) => {
+                const emp = employeeTypes.find(e => e.type === type);
+                if (!emp || employees.some(e => e.type === type)) return;
+
+                if (gameState.cash < emp.cost * 3) {
+                    setMessage('❌ Zu teuer!');
+                    return;
+                }
+
+                setGameState(prev => ({ ...prev, cash: prev.cash - emp.cost * 3 }));
+                setEmployees(prev => [...prev, emp]);
+                setMessage(`👔 ${type} eingestellt!`);
+            };
+
+            const fireEmployee = (type) => {
+                setEmployees(prev => prev.filter(e => e.type !== type));
+                setMessage(`❌ ${type} entlassen`);
+            };
+
+            const takeLoan = (amount) => {
+                setGameState(prev => ({
+                    ...prev,
+                    cash: prev.cash + amount,
+                    loan: (prev.loan || 0) + amount
+                }));
+                setMessage(`🏦 Kredit: +${amount.toLocaleString('de-DE')} €`);
+            };
+
+            const repayLoan = (amount) => {
+                const repay = Math.min(amount, gameState.loan || 0, gameState.cash);
+                if (repay > 0) {
+                    setGameState(prev => ({
+                        ...prev,
+                        cash: prev.cash - repay,
+                        loan: (prev.loan || 0) - repay
+                    }));
+                    setMessage(`✅ Tilgung: ${repay.toLocaleString('de-DE')} €`);
+                }
+            };
+
+            const nextMonth = () => {
+                if (gameState.gameMode === 'sandbox') {
+                    setGameState(prev => ({ ...prev, cash: 999999999 }));
+                }
+
+                let totalRental = 0;
+                let totalLease = 0;
+                let totalMaintenance = 0;
+
+                const updatedProps = properties.map(prop => {
+                    // Wertsteigerung
+                    const monthlyRate = prop.appreciationRate / 12;
+                    const increase = prop.currentValue * monthlyRate * economicCycle.priceMultiplier;
+                    prop.currentValue = Math.floor(prop.currentValue + increase);
+
+                    // Mieten
+                    if (prop.isRented && prop.rental) {
+                        const skillBonus = 1 + (skills.rentBonus * 0.1) + (achievementRewards.rentBonus || 0);
+                        totalRental += Math.floor((prop.customRent || prop.rental) * skillBonus);
+                        
+                        if (prop.remainingMonths) {
+                            prop.remainingMonths -= 1;
+                            if (prop.remainingMonths <= 0) prop.isRented = false;
+                        }
+                    }
+
+                    // Pachten
+                    if (prop.isLeased && prop.leaseIncome) {
+                        totalLease += prop.leaseIncome;
+                        if (prop.leaseMonthsLeft) {
+                            prop.leaseMonthsLeft -= 1;
+                            if (prop.leaseMonthsLeft <= 0) prop.isLeased = false;
+                        }
+                    }
+
+                    // Instandhaltung
+                    const housmeister = employees.some(e => e.type === 'Hausmeister') ? 0.8 : 1.0;
+                    totalMaintenance += Math.floor(prop.maintenanceCost * housmeister);
+
+                    prop.condition = Math.max(40, prop.condition - (prop.isRented ? 1 : 0.5));
+                    return prop;
+                });
+
+                const income = totalRental + totalLease;
+                const empCost = employees.reduce((sum, e) => sum + e.cost, 0);
+                const loanInt = (gameState.loan || 0) * (economicCycle.interestRate / 12);
+                const netIncome = income - totalMaintenance - loanInt - empCost;
+
+                setIncomeBreakdown({
+                    rentalIncome: income,
+                    maintenanceCost: totalMaintenance,
+                    loanInterest: loanInt,
+                    employeeCost: empCost,
+                    netIncome
+                });
+
+                setProperties(updatedProps);
+                setGameState(prev => ({
+                    ...prev,
+                    month: prev.month + 1,
+                    cash: prev.cash + netIncome,
+                    monthlyIncome: netIncome
+                }));
+
+                setMessage(`M${gameState.month}: ${netIncome >= 0 ? '+' : ''}${netIncome.toLocaleString('de-DE')} €`);
+
+                if (Math.random() < 0.2) generateNewProperties();
+            };
+
+            const saveGame = (slotIndex) => {
+                const data = {
+                    slotIndex,
+                    timestamp: Date.now(),
+                    gameState,
+                    properties,
+                    employees,
+                    specialists,
+                    playerLevel,
+                    playerXP,
+                    skillPoints,
+                    skills,
+                    gameStats,
+                    unlockedAchievements,
+                    achievementRewards
+                };
+
+                const slots = [...saveSlots];
+                slots[slotIndex] = data;
+
+                setSaveSlots(slots);
+                localStorage.setItem('immoTycoonSaves', JSON.stringify(slots));
+                setCurrentSaveSlot(slotIndex);
+                setMessage(`💾 Gespeichert in Slot ${slotIndex + 1}!`);
+                setShowSaveMenu(false);
+            };
+
+            const loadGame = (slotIndex) => {
+                const data = saveSlots[slotIndex];
+                if (!data) return;
+
+                setGameState(data.gameState);
+                setProperties(data.properties || []);
+                setEmployees(data.employees || []);
+                setSpecialists(data.specialists || []);
+                setPlayerLevel(data.playerLevel || 1);
+                setPlayerXP(data.playerXP || 0);
+                setSkillPoints(data.skillPoints || 0);
+                setSkills(data.skills || {});
+                setGameStats(data.gameStats || {});
+                setUnlockedAchievements(data.unlockedAchievements || []);
+                setAchievementRewards(data.achievementRewards || {});
+
+                setCurrentSaveSlot(slotIndex);
+                setShowLoadMenu(false);
+                setShowGameModeSelection(false);
+                setMessage(`📂 Geladen aus Slot ${slotIndex + 1}!`);
+            };
+
+            const goalAmount = gameState.goalAmount || 5000000;
+            const gameWon = totalEquity >= goalAmount && gameState.gameMode !== 'sandbox';
+            const gameLost = gameState.cash < -100000;
+
+            const bgClass = darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-emerald-50 to-teal-100';
+            const cardClass = darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800';
+            const textClass = darkMode ? 'text-gray-200' : 'text-gray-800';
+
+            // HAUPTMENÜ
+            if (showGameModeSelection) {
+                if (selectionStep === 0) {
+                    return (
+                        <div className={`min-h-screen ${bgClass} p-4 flex items-center justify-center`}>
+                            <div className="max-w-2xl w-full">
+                                <div className={`${cardClass} rounded-xl shadow-2xl p-8`}>
+                                    <div className="flex justify-between items-center mb-8">
+                                        <div>
+                                            <h1 className="text-4xl font-bold mb-2">🏢 Immobilien-Tycoon</h1>
+                                            <p className="text-sm opacity-50">Version {GAME_VERSION}</p>
+                                        </div>
+                                        <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-lg">
+                                            {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <button
+                                            onClick={() => setSelectionStep(1)}
+                                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-6 rounded-xl font-bold text-xl hover:from-emerald-600 hover:to-teal-600 transition-all"
+                                        >
+                                            🎮 Neues Spiel
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                if (saveSlots.filter(s => s).length === 0) {
+                                                    setMessage('❌ Keine Saves!');
+                                                } else {
+                                                    setShowLoadMenu(true);
+                                                }
+                                            }}
+                                            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-6 rounded-xl font-bold text-xl hover:from-blue-600 hover:to-purple-600"
+                                        >
+                                            📂 Laden
+                                        </button>
+
+                                        <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'} p-6 rounded-xl`}>
+                                            <h3 className="font-bold mb-3">✨ Features:</h3>
+                                            <div className="grid grid-cols-2 gap-2 text-sm opacity-75">
+                                                <div>• 🎯 2 Spielmodi</div>
+                                                <div>• ⚙️ 3 Schwierigkeiten</div>
+                                                <div>• 🏠 6 Immobilientypen</div>
+                                                <div>• 🗺️ 4 Regionen</div>
+                                                <div>• ⭐ Skill-System</div>
+                                                <div>• 💾 Speichern/Laden</div>
+                                                <div>• 👥 Mitarbeiter</div>
+                                                <div>• 🏆 Achievements</div>
+                                            </div>
+                                        </div>
+
+                                        {message && (
+                                            <div className={`${darkMode ? 'bg-blue-900' : 'bg-blue-100'} p-3 rounded-lg text-sm`}>
+                                                {message}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Schritt 1: Spielmodus
+                if (selectionStep === 1) {
+                    return (
+                        <div className={`min-h-screen ${bgClass} p-4 flex items-center justify-center`}>
+                            <div className="max-w-4xl w-full">
+                                <div className={`${cardClass} rounded-xl shadow-2xl p-6`}>
+                                    <button onClick={() => setSelectionStep(0)} className="mb-4 text-sm text-emerald-600 hover:underline">
+                                        ← Zurück
+                                    </button>
+                                    <h2 className="text-xl font-bold mb-4">Spielmodus wählen</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {Object.entries(gameModes).map(([key, mode]) => (
+                                            <div 
+                                                key={key}
+                                                className={`border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} rounded-lg p-6 cursor-pointer hover:border-emerald-500`}
+                                                onClick={() => {
+                                                    setSelectedMode(key);
+                                                    setSelectionStep(2);
+                                                }}
+                                            >
+                                                <h3 className="font-bold text-xl mb-2">{mode.name}</h3>
+                                                <p className="text-sm opacity-75">{mode.description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Schritt 2: Schwierigkeit
+                if (selectionStep === 2) {
+                    return (
+                        <div className={`min-h-screen ${bgClass} p-4 flex items-center justify-center`}>
+                            <div className="max-w-4xl w-full">
+                                <div className={`${cardClass} rounded-xl shadow-2xl p-6`}>
+                                    <button onClick={() => setSelectionStep(1)} className="mb-4 text-sm text-emerald-600 hover:underline">
+                                        ← Zurück
+                                    </button>
+                                    <h2 className="text-xl font-bold mb-4">Schwierigkeit wählen</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {Object.entries(difficulties).map(([key, diff]) => (
+                                            <div 
+                                                key={key}
+                                                className={`border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} rounded-lg p-6 cursor-pointer hover:border-emerald-500`}
+                                                onClick={() => {
+                                                    setSelectedDifficulty(key);
+                                                    setSelectionStep(3);
+                                                }}
+                                            >
+                                                <h3 className="font-bold text-lg mb-2">{diff.name}</h3>
+                                                <p className="text-sm">💰 {(diff.startCash/1000).toFixed(0)}k € Start</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Schritt 3: Geschäftsform
+                if (selectionStep === 3) {
+                    return (
+                        <div className={`min-h-screen ${bgClass} p-4 flex items-center justify-center`}>
+                            <div className="max-w-4xl w-full">
+                                <div className={`${cardClass} rounded-xl shadow-2xl p-6`}>
+                                    <button onClick={() => setSelectionStep(2)} className="mb-4 text-sm text-emerald-600 hover:underline">
+                                        ← Zurück
+                                    </button>
+                                    <h2 className="text-xl font-bold mb-4">Geschäftsform wählen</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div 
+                                            className={`border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} rounded-lg p-6 cursor-pointer hover:border-emerald-500`}
+                                            onClick={() => {
+                                                setSelectedBusinessType('private');
+                                                setSelectionStep(4);
+                                            }}
+                                        >
+                                            <h3 className="font-bold text-xl mb-2">👤 Privat</h3>
+                                            <ul className="text-sm space-y-1 opacity-75">
+                                                <li>• 25% Spekulationssteuer</li>
+                                                <li>• Steuerfrei nach 10 Jahren</li>
+                                            </ul>
+                                        </div>
+                                        <div 
+                                            className={`border-2 ${darkMode ? 'border-gray-600' : 'border-gray-200'} rounded-lg p-6 cursor-pointer hover:border-emerald-500`}
+                                            onClick={() => {
+                                                setSelectedBusinessType('commercial');
+                                                setSelectionStep(4);
+                                            }}
+                                        >
+                                            <h3 className="font-bold text-xl mb-2">🏢 Gewerblich</h3>
+                                            <ul className="text-sm space-y-1 opacity-75">
+                                                <li>• 15% Kapitalertragsteuer</li>
+                                                <li>• Steuerfrei nach 5 Jahren</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Schritt 4: Namen
+                if (selectionStep === 4) {
+                    return (
+                        <div className={`min-h-screen ${bgClass} p-4 flex items-center justify-center`}>
+                            <div className="max-w-2xl w-full">
+                                <div className={`${cardClass} rounded-xl shadow-2xl p-6`}>
+                                    <button onClick={() => setSelectionStep(3)} className="mb-4 text-sm text-emerald-600 hover:underline">
+                                        ← Zurück
+                                    </button>
+                                    <h2 className="text-xl font-bold mb-4">Dein Name</h2>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">Name:</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={tempPlayerName}
+                                                    onChange={(e) => setTempPlayerName(e.target.value)}
+                                                    placeholder="z.B. Max Mustermann"
+                                                    className={`flex-1 p-3 rounded border-2 ${darkMode ? 'bg-gray-700' : 'bg-white'} outline-none`}
+                                                />
+                                                <button
+                                                    onClick={generateRandomName}
+                                                    className="bg-purple-500 text-white px-4 rounded font-bold"
+                                                >
+                                                    🎲
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {selectedBusinessType === 'commercial' && (
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">Firma:</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={tempCompanyName}
+                                                        onChange={(e) => setTempCompanyName(e.target.value)}
+                                                        placeholder="z.B. Mustermann GmbH"
+                                                        className={`flex-1 p-3 rounded border-2 ${darkMode ? 'bg-gray-700' : 'bg-white'} outline-none`}
+                                                    />
+                                                    <button
+                                                        onClick={generateRandomCompanyName}
+                                                        className="bg-blue-500 text-white px-4 rounded font-bold"
+                                                    >
+                                                        🎲
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={() => startGame(selectedMode, selectedDifficulty, selectedBusinessType)}
+                                            disabled={!tempPlayerName.trim()}
+                                            className={`w-full py-4 rounded-lg font-bold text-lg ${
+                                                tempPlayerName.trim()
+                                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            {tempPlayerName.trim() ? '🚀 Starten!' : '⚠️ Name eingeben'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+            }
+
+            // HAUPTSPIEL
+            return (
+                <div className={`min-h-screen ${bgClass} pb-20`}>
+                    {/* Header */}
+                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg sticky top-0 z-40`}>
+                        <div className="max-w-7xl mx-auto px-3 py-3">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h1 className={`text-xl font-bold ${textClass} flex items-center gap-2`}>
+                                        <Building2 size={24} className="text-emerald-600" />
+                                        Immobilien-Tycoon
+                                    </h1>
+                                    <p className="text-xs opacity-75">M{gameState.month} • {gameState.playerName}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowSaveMenu(true)} className="p-2 rounded bg-blue-100">
+                                        <Save size={20} />
+                                    </button>
+                                    <button onClick={() => setShowLoadMenu(true)} className="p-2 rounded bg-purple-100">
+                                        <Filter size={20} />
+                                    </button>
+                                    <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded">
+                                        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                                    </button>
+                                    <button onClick={() => setShowMenu(!showMenu)} className="p-2 rounded bg-emerald-100">
+                                        {showMenu ? <X size={24} /> : <Menu size={24} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Menü */}
+                    {showMenu && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setShowMenu(false)}>
+                            <div className={`${cardClass} w-64 h-full p-4`} onClick={e => e.stopPropagation()}>
+                                <h3 className="font-bold text-lg mb-4">Menü</h3>
+                                <div className="space-y-2">
+                                    <button 
+                                        onClick={() => { takeLoan(200000); setShowMenu(false); }} 
+                                        className={`w-full text-left p-3 rounded ${darkMode ? 'bg-gray-700' : 'bg-blue-100'}`}
+                                    >
+                                        🏦 Kredit 200k
+                                    </button>
+                                    <button onClick={nextMonth} className="w-full text-left p-3 rounded bg-emerald-600 text-white font-bold">
+                                        ▶ Nächster Monat
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="max-w-7xl mx-auto px-3 py-4">
+                        {/* Win/Lose */}
+                        {(gameLost || gameWon) && (
+                            <div className={`${gameWon ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'} border-2 rounded-xl p-4 mb-4`}>
+                                <h2 className={`text-2xl font-bold ${gameWon ? 'text-green-700' : 'text-red-700'} mb-2`}>
+                                    {gameWon ? '🎉 Gewonnen!' : '💔 Insolvenz!'}
+                                </h2>
+                                <button onClick={() => window.location.reload()} className={`${gameWon ? 'bg-green-600' : 'bg-red-600'} text-white px-4 py-2 rounded w-full`}>
+                                    Neues Spiel
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-3 text-white">
+                                <p className="text-xs">Bargeld</p>
+                                <p className="text-lg font-bold">{(gameState.cash/1000).toFixed(0)}k €</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-3 text-white">
+                                <p className="text-xs">Immobilien</p>
+                                <p className="text-lg font-bold">{(totalPropertyValue/1000).toFixed(0)}k €</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-3 text-white">
+                                <p className="text-xs">Eigenkapital</p>
+                                <p className="text-lg font-bold">{(totalEquity/1000).toFixed(0)}k €</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg p-3 text-white">
+                                <p className="text-xs">Objekte</p>
+                                <p className="text-lg font-bold">{properties.length}</p>
+                            </div>
+                        </div>
+
+                        {/* Message */}
+                        <div className={`${cardClass} rounded-lg shadow p-3 mb-4`}>
+                            <p className="text-sm">{message}</p>
+                            <div className="mt-2 pt-2 border-t cursor-pointer" onClick={() => setShowIncomeDetails(!showIncomeDetails)}>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs">Monatseinkommen:</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className={`text-sm font-bold ${gameState.monthlyIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {gameState.monthlyIncome.toLocaleString('de-DE')} €
+                                        </span>
+                                        {showIncomeDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {showIncomeDetails && (
+                                <div className={`mt-2 space-y-1 text-xs p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
+                                    <div className="flex justify-between">
+                                        <span>Mieten:</span>
+                                        <span className="text-green-600 font-bold">+{incomeBreakdown.rentalIncome.toLocaleString('de-DE')}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Instandhaltung:</span>
+                                        <span className="text-red-600 font-bold">-{incomeBreakdown.maintenanceCost.toLocaleString('de-DE')}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Zinsen:</span>
+                                        <span className="text-red-600 font-bold">-{incomeBreakdown.loanInterest.toLocaleString('de-DE')}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="grid grid-cols-5 gap-1 mb-4">
+                            {[
+                                { id: 'properties', icon: '🏠', label: 'Portfolio' },
+                                { id: 'market', icon: '🏪', label: 'Markt' },
+                                { id: 'team', icon: '👔', label: 'Team' },
+                                { id: 'progress', icon: '⭐', label: 'Level' },
+                                { id: 'bank', icon: '🏦', label: 'Bank' }
+                            ].map(tab => (
+                                <button 
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`py-2 text-xs font-bold rounded flex flex-col items-center gap-1 ${activeTab === tab.id ? 'bg-emerald-600 text-white' : `${darkMode ? 'bg-gray-800' : 'bg-white'}`}`}
+                                >
+                                    <span className="text-lg">{tab.icon}</span>
+                                    <span className="text-[10px]">{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Content */}
+                        {activeTab === 'properties' && (
+                            <div className="space-y-3">
+                                <h3 className={`text-lg font-bold ${textClass}`}>Portfolio ({properties.length})</h3>
+                                {properties.length === 0 ? (
+                                    <div className={`${cardClass} rounded-lg p-6 text-center`}>
+                                        <p>Noch keine Immobilien</p>
+                                    </div>
+                                ) : (
+                                    properties.map(prop => {
+                                        const isExpanded = expandedProperty === prop.id;
+                                        const holdingMonths = gameState.month - (prop.purchaseMonth || 0);
+                                        const taxFreeThreshold = gameState.businessType === 'private' ? 120 : 60;
+                                        const isTaxFree = holdingMonths >= taxFreeThreshold;
+                                        
+                                        return (
+                                            <div key={prop.id} className={`${cardClass} rounded-lg shadow ${prop.isRented || prop.isLeased ? 'border-2 border-emerald-500' : ''}`}>
+                                                <div className="p-3 cursor-pointer" onClick={() => setExpandedProperty(isExpanded ? null : prop.id)}>
+                                                    <div className="flex justify-between">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <h4 className="font-bold text-sm">{prop.type}</h4>
+                                                                {prop.isRented && <span className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-full">✅ Vermietet</span>}
+                                                                {prop.isLeased && <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">📋 Verpachtet</span>}
+                                                            </div>
+                                                            <p className="text-xs opacity-75">{prop.city} • {holdingMonths}M</p>
+                                                            {isTaxFree && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded">🆓</span>}
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-bold text-emerald-700">{(prop.currentValue/1000).toFixed(0)}k €</p>
+                                                            {prop.isRented && <p className="text-xs text-emerald-600">+{prop.customRent}€/M</p>}
+                                                            {prop.isLeased && <p className="text-xs text-blue-600">+{prop.leaseIncome}€/M</p>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                {isExpanded && (
+                                                    <div className="border-t p-3 space-y-2">
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div>Zustand: {prop.condition.toFixed(0)}%</div>
+                                                            <div>Renoviert: {prop.renovationLevel}x</div>
+                                                        </div>
+                                                        
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <button onClick={() => sellProperty(prop)} className="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                                                💰 Verkaufen
+                                                            </button>
+                                                            <button onClick={() => renovateProperty(prop)} disabled={prop.condition >= 100} className="flex-1 bg-blue-600 text-white px-2 py-1 rounded text-xs disabled:opacity-50">
+                                                                🔨 Renovieren
+                                                            </button>
+                                                            {(prop.rental || prop.type === 'Grundstück') && (
+                                                                <button onClick={() => toggleRental(prop)} className="flex-1 bg-purple-600 text-white px-2 py-1 rounded text-xs">
+                                                                    🏠 {prop.isRented || prop.isLeased ? 'Kündigen' : 'Vermieten'}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'market' && (
+                            <div className="space-y-3">
+                                <h3 className={`text-lg font-bold ${textClass}`}>🏪 Markt</h3>
+                                {availableProperties.slice(0, 6).map(prop => {
+                                    const expectedValue = prop.basePrice * (prop.condition / 100) * economicCycle.priceMultiplier;
+                                    const isGoodDeal = prop.purchasePrice < expectedValue * 0.85;
+                                    
+                                    return (
+                                        <div key={prop.id} className={`${cardClass} rounded-lg p-3 ${isGoodDeal ? 'border-2 border-green-400' : ''}`}>
+                                            <div className="flex justify-between mb-2">
+                                                <div>
+                                                    <p className="font-bold text-sm">{prop.type}</p>
+                                                    <p className="text-xs opacity-75">{prop.city} • {prop.regionName}</p>
+                                                    {isGoodDeal && <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">💚 Schnäppchen!</span>}
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-bold text-emerald-700">{(prop.purchasePrice/1000).toFixed(0)}k €</p>
+                                                    <p className="text-xs opacity-75">+{((prop.totalCost - prop.purchasePrice)/1000).toFixed(0)}k NK</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="text-xs mb-2">
+                                                <div>Zustand: {prop.condition}%</div>
+                                                {prop.rental && <div className="text-emerald-600">Miete: {Math.floor(prop.rental * prop.locationMultiplier)}€/M</div>}
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => buyProperty(prop)}
+                                                disabled={gameState.cash < prop.totalCost}
+                                                className={`w-full py-2 rounded text-sm font-bold ${gameState.cash < prop.totalCost ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                                            >
+                                                {gameState.cash < prop.totalCost ? '❌ Zu teuer' : '✅ Kaufen'}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {activeTab === 'team' && (
+                            <div className="space-y-3">
+                                <h3 className={`text-lg font-bold ${textClass}`}>Team ({employees.length})</h3>
+                                {employeeTypes.map(emp => {
+                                    const hired = employees.some(e => e.type === emp.type);
+                                    return (
+                                        <div key={emp.type} className={`${cardClass} p-3 rounded ${hired ? 'opacity-50' : ''}`}>
+                                            <div className="flex justify-between mb-2">
+                                                <div>
+                                                    <p className="font-bold text-sm">{emp.type}</p>
+                                                    <p className="text-xs opacity-75">{emp.description}</p>
+                                                </div>
+                                                <p className="text-xs">{emp.cost}€/M</p>
+                                            </div>
+                                            {hired ? (
+                                                <button onClick={() => fireEmployee(emp.type)} className="w-full bg-red-600 text-white py-1 rounded text-xs">
+                                                    Entlassen
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => hireEmployee(emp.type)} 
+                                                    disabled={gameState.cash < emp.cost * 3}
+                                                    className="w-full bg-blue-600 text-white py-1 rounded text-xs disabled:opacity-50"
+                                                >
+                                                    Einstellen ({(emp.cost * 3 / 1000).toFixed(0)}k)
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {activeTab === 'progress' && (
+                            <div className="space-y-3">
+                                <h3 className={`text-lg font-bold ${textClass}`}>⭐ Level {playerLevel}</h3>
+                                <div className={`${cardClass} p-4 rounded`}>
+                                    <p className="text-sm mb-2">Skill-Punkte: <span className="font-bold">{skillPoints}</span></p>
+                                    <p className="text-xs opacity-75 mb-4">Achievements: {unlockedAchievements.length}/{achievementDefinitions.length}</p>
+                                    
+                                    <div className="space-y-2">
+                                        {achievementDefinitions.map(ach => {
+                                            const unlocked = unlockedAchievements.includes(ach.id);
+                                            return (
+                                                <div key={ach.id} className={`text-xs p-2 rounded ${unlocked ? 'bg-green-600 text-white' : darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                                    <span className="font-bold">{ach.name}</span> - {ach.desc}
+                                                    {unlocked && <span className="ml-2 text-yellow-300">✓ {ach.rewardText}</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'bank' && (
+                            <div className="space-y-3">
+                                <h3 className={`text-lg font-bold ${textClass}`}>🏦 Bank</h3>
+                                
+                                {gameState.loan > 0 && (
+                                    <div className={`${cardClass} p-4 rounded border-2 border-orange-400`}>
+                                        <h4 className="font-bold mb-2">Kredit</h4>
+                                        <p className="text-sm">Summe: <span className="font-bold text-red-600">{(gameState.loan/1000).toFixed(0)}k €</span></p>
+                                        <p className="text-xs">Zinsen: {Math.floor(gameState.loan * gameState.loanInterestRate / 12).toLocaleString('de-DE')} €/M</p>
+                                        <button 
+                                            onClick={() => repayLoan(Math.min(50000, gameState.loan, gameState.cash))} 
+                                            disabled={gameState.cash < 1000}
+                                            className="w-full bg-orange-600 text-white py-2 rounded mt-2 text-sm disabled:opacity-50"
+                                        >
+                                            Tilgen: {Math.min(50000, gameState.loan, gameState.cash) >= 1000 ? (Math.min(50000, gameState.loan, gameState.cash)/1000).toFixed(0) + 'k' : '0'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                <h4 className="font-bold text-sm">Neuer Kredit</h4>
+                                {[
+                                    { name: 'Klein', amount: 50000, rate: 0.08 },
+                                    { name: 'Mittel', amount: 200000, rate: 0.04 },
+                                    { name: 'Groß', amount: 500000, rate: 0.035 }
+                                ].map(loan => (
+                                    <div key={loan.name} className={`${cardClass} p-3 rounded`}>
+                                        <div className="flex justify-between mb-2">
+                                            <div>
+                                                <p className="font-bold text-sm">{loan.name}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-blue-600">{(loan.amount/1000).toFixed(0)}k €</p>
+                                                <p className="text-xs">{(loan.rate * 100).toFixed(1)}%</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => takeLoan(loan.amount)}
+                                            className="w-full bg-blue-600 text-white py-2 rounded text-sm"
+                                        >
+                                            Aufnehmen
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modals */}
+                    {showSaveMenu && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowSaveMenu(false)}>
+                            <div className={`${cardClass} rounded-xl p-6 max-w-2xl w-full`} onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-2xl font-bold">💾 Speichern</h2>
+                                    <button onClick={() => setShowSaveMenu(false)}><X /></button>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[0, 1, 2, 3].map(i => {
+                                        const save = saveSlots[i];
+                                        return (
+                                            <div key={i} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'} p-4 rounded`}>
+                                                <p className="font-bold mb-2">Slot {i + 1}</p>
+                                                {save && (
+                                                    <p className="text-xs mb-2">
+                                                        M{save.gameState.month} • {save.gameState.playerName}
+                                                    </p>
+                                                )}
+                                                <button
+                                                    onClick={() => saveGame(i)}
+                                                    className="w-full bg-blue-600 text-white py-2 rounded text-xs"
+                                                >
+                                                    {save ? 'Überschreiben' : 'Speichern'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showLoadMenu && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowLoadMenu(false)}>
+                            <div className={`${cardClass} rounded-xl p-6 max-w-2xl w-full`} onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-2xl font-bold">📂 Laden</h2>
+                                    <button onClick={() => setShowLoadMenu(false)}><X /></button>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[0, 1, 2, 3].map(i => {
+                                        const save = saveSlots[i];
+                                        if (!save) return null;
+                                        
+                                        return (
+                                            <div 
+                                                key={i} 
+                                                className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'} p-4 rounded cursor-pointer hover:shadow-lg`}
+                                                onClick={() => loadGame(i)}
+                                            >
+                                                <p className="font-bold mb-2">Slot {i + 1}</p>
+                                                <p className="text-xs">M{save.gameState.month} • {save.gameState.playerName}</p>
+                                                <div className="text-xs text-center bg-emerald-600 text-white py-2 rounded mt-2">
+                                                    Laden
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {buyerOffers && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setBuyerOffers(null)}>
+                            <div className={`${cardClass} rounded-xl p-4 max-w-lg w-full`} onClick={(e) => e.stopPropagation()}>
+                                <h3 className="text-lg font-bold mb-3">💰 Käufer</h3>
+                                {buyerOffers.offers.map((offer, i) => (
+                                    <div key={i} className="border p-3 rounded mb-2 cursor-pointer hover:border-emerald-500" onClick={() => confirmSale(buyerOffers.property, offer)}>
+                                        <div className="flex justify-between">
+                                            <p className="font-bold">{offer.icon} {offer.name}</p>
+                                            <p className="font-bold text-emerald-600">{(offer.price/1000).toFixed(0)}k €</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button onClick={() => setBuyerOffers(null)} className="w-full bg-gray-500 text-white py-2 rounded mt-2">Abbrechen</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {tenantOffers && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setTenantOffers(null)}>
+                            <div className={`${cardClass} rounded-xl p-4 max-w-lg w-full`} onClick={(e) => e.stopPropagation()}>
+                                <h3 className="text-lg font-bold mb-3">{tenantOffers.isLease ? '📋 Pacht' : '🏠 Mieter'}</h3>
+                                {tenantOffers.offers.map((offer, i) => (
+                                    <div key={i} className="border p-3 rounded mb-2 cursor-pointer hover:border-purple-500" onClick={() => confirmTenant(tenantOffers.property, offer)}>
+                                        <div className="flex justify-between">
+                                            <p className="font-bold">{offer.type}</p>
+                                            <p className="font-bold text-purple-600">{tenantOffers.isLease ? offer.monthlyIncome : offer.rent}€/M</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button onClick={() => setTenantOffers(null)} className="w-full bg-gray-500 text-white py-2 rounded mt-2">Abbrechen</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Bottom Bar */}
+                    <div className={`fixed bottom-0 left-0 right-0 ${darkMode ? 'bg-gray-800' : 'bg-white'} border-t shadow-lg p-3 z-30`}>
+                        <div className="max-w-7xl mx-auto">
+                            <button onClick={nextMonth} className="w-full bg-emerald-600 text-white py-3 rounded font-bold mb-2">
+                                ▶ Nächster Monat
+                            </button>
+                            <p className="text-xs text-center opacity-50">v{GAME_VERSION}</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<RealEstateSimulation />);
+    </script>
+</body>
+</html>
